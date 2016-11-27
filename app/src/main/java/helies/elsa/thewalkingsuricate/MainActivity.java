@@ -102,12 +102,6 @@ public class MainActivity extends Activity implements SensorEventListener {
                 AlertBox("Fatal Error", "In onResume() and unable to close socket during connection failure" + e2.getMessage() + ".");
             }
         }
-
-        try {
-            outStream = btSocket.getOutputStream();
-        } catch (IOException e) {
-            AlertBox("Fatal Error", "In onResume() and output stream creation failed:" + e.getMessage() + ".");
-        }
     }
 
     @Override
@@ -119,7 +113,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         if (Math.abs(last_z - z) > 10 && Math.abs(last_y - y) > 10){
             // Détection d'une coupe
-            sendMessage("COUPE");
+            sendMessage("COUPE\n");
             Toast.makeText(MainActivity.this, "Coupe", Toast.LENGTH_SHORT).show();
         }
 
@@ -132,10 +126,6 @@ public class MainActivity extends Activity implements SensorEventListener {
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
-    }
-
-    private void stop(){
-        setContentView(R.layout.positions);
     }
 
     private void startGame() {
@@ -155,7 +145,7 @@ public class MainActivity extends Activity implements SensorEventListener {
                 Toast.makeText(MainActivity.this, "Arme1", Toast.LENGTH_SHORT).show();
                 arme1.setEnabled(false);
                 arme2.setEnabled(true);
-                sendMessage("ARME1");
+                sendMessage("ARME1\n");
             }
         });
 
@@ -165,7 +155,7 @@ public class MainActivity extends Activity implements SensorEventListener {
                 Toast.makeText(MainActivity.this, "Arme2", Toast.LENGTH_SHORT).show();
                 arme2.setEnabled(false);
                 arme1.setEnabled(true);
-                sendMessage("ARME2");
+                sendMessage("ARME2\n");
             }
         });
 
@@ -173,7 +163,7 @@ public class MainActivity extends Activity implements SensorEventListener {
             public void onClick(View v) {
                 // Perform action on click
                 Toast.makeText(MainActivity.this, "T-rex", Toast.LENGTH_SHORT).show();
-                sendMessage("TREX");
+                sendMessage("TREX\n");
             }
         });
 
@@ -181,12 +171,17 @@ public class MainActivity extends Activity implements SensorEventListener {
             public void onClick(View v) {
                 // Perform action on click
                 Toast.makeText(MainActivity.this, "bombe", Toast.LENGTH_SHORT).show();
-                sendMessage("BOMBE");
+                sendMessage("BOMBE\n");
             }
         });
     }
 
     private void sendMessage(String message){
+        try {
+            outStream = btSocket.getOutputStream();
+        } catch (IOException e) {
+            AlertBox("Fatal Error", "In onResume() and output stream creation failed:" + e.getMessage() + ".");
+        }
         byte[] msgBuffer = message.getBytes();
         try {
             outStream.write(msgBuffer);
