@@ -3,47 +3,10 @@
     android:orientation="vertical"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent">
+
     <TextView
-        android:paddingTop="20dip"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:text="Shaker Demo"/>
-    <TableLayout
-        android:paddingTop="10dip"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:stretchColumns="*">
-        <TableRow>
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="14sp"
-                android:text="X-Axis"
-                android:gravity="center"/>
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="14sp"
-
-                android:text="Y-Axis"
-
-                android:gravity="center"/>
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="14sp"
-                android:text="Z-Axis"
-                android:gravity="center"/>
-        </TableRow>
-        <TableRow>
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:id="@+id/envoie"
-                android:gravity="center"/>
-        </TableRow>
-    </TableLayout>
+        android:text="Pour fonctionner, l'application nécessite que l'appareil soit appareiller en bluetooth avec l'ordinateur.\nRelancer l'application une fois cela fait. \n A tout à l'heure :)"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/textView" />
 </LinearLayout>
