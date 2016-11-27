@@ -1,8 +1,14 @@
 package helies.elsa.thewalkingsuricate;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Notification;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -16,76 +22,125 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.util.UUID;
 
 public class MainActivity extends Activity implements SensorEventListener {
+    // Accéléromètre
     private SensorManager senSensorManager;
     private Sensor senAccelerometer;
-
-    private long lastUpdate = 0;
     private float last_x, last_y, last_z;
-    private static final int SHAKE_THRESHOLD = 600;
 
-    private boolean mInitialized;
 
-    //private GameLoop game;
-    private BluetoothInterface bt = null;
+    // Bluetooth
+    private static final int REQUEST_ENABLE_BT = 1;
+    private BluetoothAdapter btAdapter = null;
+    private BluetoothSocket btSocket = null;
+    private OutputStream outStream = null;
 
-    private final float NOISE = (float) 2.0;
-
-    final Handler handler = new Handler() {
-        public void handleMessage(Message msg) {
-            String data = msg.getData().getString("receivedData");
-            Toast.makeText(MainActivity.this, "Msg: "+data, Toast.LENGTH_SHORT).show();
-        }
-    };
-
-    final Handler handlerStatus = new Handler() {
-        public void handleMessage(Message msg) {
-            int co = msg.arg1;
-            if(co == 1) {
-                Toast.makeText(MainActivity.this, "Connected with "+bt.getDevice().getName(), Toast.LENGTH_SHORT).show();
-            } else if (co == 2) {
-                Toast.makeText(MainActivity.this, "Disconnected", Toast.LENGTH_SHORT).show();
-            }
-        }
-    };
-
-    private void stop(){
-        setContentView(R.layout.positions);
-        TextView etat = (TextView) findViewById(R.id.envoie);
-        etat.setText("Pas de bluetooth");
-    }
-
-    private void startGame() {
-        setContentView(R.layout.game);
-        addListener();
-    }
-
+    private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+    private static String address = "74:2F:68:B2:27:75";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        bt = new BluetoothInterface(handlerStatus, handler);
-        if (!bt.hasBluetooth()) {
-            Toast.makeText(MainActivity.this, "Protocole bluetooth non supporté", Toast.LENGTH_SHORT).show();
-            stop();
-        } else {
-            if (!bt.findDevice()) {
-                Toast.makeText(MainActivity.this, "Micro-contrôleur non-trouvé", Toast.LENGTH_SHORT).show();
-                stop();
-            } else {
-                bt.connect();
-            }
-
-        }
-
-        mInitialized = false;
-
         senSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         senAccelerometer = senSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         senSensorManager.registerListener(this, senAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
 
+        btAdapter = BluetoothAdapter.getDefaultAdapter();
+        CheckBTState();
+
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        startGame();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        senSensorManager.unregisterListener(this);
+        if (outStream != null) {
+            try {
+                outStream.flush();
+            } catch (IOException e) {
+                AlertBox("Fatal Error", "In onPause() and failed to flush output stream: " + e.getMessage() + ".");
+            }
+        }
+
+        try     {
+            btSocket.close();
+        } catch (IOException e2) {
+            AlertBox("Fatal Error", "In onPause() and failed to close socket." + e2.getMessage() + ".");
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        senSensorManager.registerListener(this, senAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        BluetoothDevice device = btAdapter.getRemoteDevice(address);
+
+        try {
+            btSocket = device.createRfcommSocketToServiceRecord(MY_UUID);
+        } catch (IOException e) {
+            AlertBox("Fatal Error", "In onResume() and socket create failed: " + e.getMessage() + ".");
+        }
+
+        btAdapter.cancelDiscovery();
+
+        try {
+            btSocket.connect();
+        } catch (IOException e) {
+            try {
+                btSocket.close();
+            } catch (IOException e2) {
+                AlertBox("Fatal Error", "In onResume() and unable to close socket during connection failure" + e2.getMessage() + ".");
+            }
+        }
+
+        try {
+            outStream = btSocket.getOutputStream();
+        } catch (IOException e) {
+            AlertBox("Fatal Error", "In onResume() and output stream creation failed:" + e.getMessage() + ".");
+        }
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+
+        float x = event.values[0];
+        float y = event.values[1];
+        float z = event.values[2];
+
+        if (Math.abs(last_z - z) > 10 && Math.abs(last_y - y) > 10){
+            // Détection d'une coupe
+            sendMessage("COUPE");
+            Toast.makeText(MainActivity.this, "Coupe", Toast.LENGTH_SHORT).show();
+        }
+
+        last_x = x;
+        last_y = y;
+        last_z = z;
+
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
+    }
+
+    private void stop(){
+        setContentView(R.layout.positions);
+    }
+
+    private void startGame() {
+        setContentView(R.layout.game);
+        addListener();
     }
 
     private void addListener(){
@@ -100,11 +155,7 @@ public class MainActivity extends Activity implements SensorEventListener {
                 Toast.makeText(MainActivity.this, "Arme1", Toast.LENGTH_SHORT).show();
                 arme1.setEnabled(false);
                 arme2.setEnabled(true);
-                try {
-                    bt.sendMessage("ARME1");
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                sendMessage("ARME1");
             }
         });
 
@@ -114,11 +165,7 @@ public class MainActivity extends Activity implements SensorEventListener {
                 Toast.makeText(MainActivity.this, "Arme2", Toast.LENGTH_SHORT).show();
                 arme2.setEnabled(false);
                 arme1.setEnabled(true);
-                try {
-                    bt.sendMessage("ARME2");
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                sendMessage("ARME2");
             }
         });
 
@@ -126,6 +173,7 @@ public class MainActivity extends Activity implements SensorEventListener {
             public void onClick(View v) {
                 // Perform action on click
                 Toast.makeText(MainActivity.this, "T-rex", Toast.LENGTH_SHORT).show();
+                sendMessage("TREX");
             }
         });
 
@@ -133,51 +181,44 @@ public class MainActivity extends Activity implements SensorEventListener {
             public void onClick(View v) {
                 // Perform action on click
                 Toast.makeText(MainActivity.this, "bombe", Toast.LENGTH_SHORT).show();
+                sendMessage("BOMBE");
             }
         });
     }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-        startGame();
+    private void sendMessage(String message){
+        byte[] msgBuffer = message.getBytes();
+        try {
+            outStream.write(msgBuffer);
+        } catch (IOException e) {
+            String msg = "In onResume() and an exception occurred during write: " + e.getMessage();
+            msg = msg +  ".\n\nCheck that the SPP UUID: " + MY_UUID.toString() + " exists on server.\n\n";
+            AlertBox("Fatal Error", msg);
+        }
     }
 
-    protected void onPause() {
-        super.onPause();
-        senSensorManager.unregisterListener(this);
-    }
-
-    protected void onResume() {
-        super.onResume();
-        senSensorManager.registerListener(this, senAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
-    }
-
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-
-        float x = event.values[0];
-        float y = event.values[1];
-        float z = event.values[2];
-
-        if (Math.abs(last_z - z) > 10 && Math.abs(last_y - y) > 10){
-            // Détection d'une coupe
-            try {
-                Toast.makeText(MainActivity.this, "Coupe", Toast.LENGTH_SHORT).show();
-                bt.sendMessage("COUPE");
-            } catch (IOException e) {
-                e.printStackTrace();
+    private void CheckBTState() {
+        // Check for Bluetooth support and then check to make sure it is turned on
+        // Emulator doesn't support Bluetooth and will return null
+        if(btAdapter==null) {
+            AlertBox("Fatal Error", "Bluetooth Not supported. Aborting.");
+        } else {
+            if (!btAdapter.isEnabled()) {
+                //Prompt user to turn on Bluetooth
+                Intent enableBtIntent = new Intent(btAdapter.ACTION_REQUEST_ENABLE);
+                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
             }
         }
-
-        last_x = x;
-        last_y = y;
-        last_z = z;
-
     }
 
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
+    public void AlertBox( String title, String message ){
+        new AlertDialog.Builder(this)
+                .setTitle( title )
+                .setMessage( message + " Press OK to exit." )
+                .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface arg0, int arg1) {
+                        finish();
+                    }
+                }).show();
     }
 }
