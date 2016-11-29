@@ -16,14 +16,25 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.text.Layout;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.StringTokenizer;
 import java.util.UUID;
+
+import static java.lang.System.exit;
 
 public class MainActivity extends Activity implements SensorEventListener {
     // Accéléromètre
@@ -39,7 +50,9 @@ public class MainActivity extends Activity implements SensorEventListener {
     private OutputStream outStream = null;
 
     private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-    private static String address = "74:2F:68:B2:27:75";
+    //private static String address = "74:2F:68:B2:27:75";
+    private static String address = "00:1A:7D:DA:71:13";
+    //private static String address = "A0:88:69:6C:C6:C1";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,10 +92,60 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
     }
 
+    private String chooseBluetoothDevice(Set<BluetoothDevice> set){
+
+        if(set.size() == 0) {
+            exit(0);
+        }
+
+        Button validate = (Button) findViewById(R.id.validate);
+        LinearLayout choix = (LinearLayout) findViewById(R.id.choices);
+        RadioGroup group ;
+        // https://www.mkyong.com/android/android-radio-buttons-example/
+
+        final String[] choices = new String[set.size()];
+        final String[] adresses = new String[set.size()];
+        RadioButton[] list = new RadioButton[set.size()];
+
+        final int[] choose = new int[1];
+        final BluetoothDevice[] choosen = new BluetoothDevice[1];
+
+        int i = 0;
+        for (Object elem : set) {
+            choices[i] = ((BluetoothDevice) elem).getName();
+            adresses[i] = ((BluetoothDevice) elem).getAddress();
+
+
+        }
+
+
+        validate.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                Toast.makeText(MainActivity.this, "You selected "+ adresses[choose[0]], Toast.LENGTH_SHORT).show();
+                Log.i("info", "Choix : " + choose[0] + " donc addresse : "+ adresses[choose[0]]);
+                //choosen[0] = btAdapter.getRemoteDevice(adresses[choose[0]]);
+
+            }
+        });
+
+        AlertDialog alert = popup.create();
+        alert.show();
+        setContentView(R.layout.positions);
+        return adresses[choose[0]];
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
         senSensorManager.registerListener(this, senAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+
+
+        /*
+        Pour récupérer le device sans passer par l'adresse.
+        */
+        Set<BluetoothDevice> bondedDevices = btAdapter.getBondedDevices();
+        String address = chooseBluetoothDevice(bondedDevices);
+
         BluetoothDevice device = btAdapter.getRemoteDevice(address);
 
         try {

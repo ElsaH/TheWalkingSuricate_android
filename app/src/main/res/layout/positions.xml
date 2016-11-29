@@ -5,8 +5,22 @@
     android:layout_height="fill_parent">
 
     <TextView
-        android:text="Pour fonctionner, l'application nécessite que l'appareil soit appareiller en bluetooth avec l'ordinateur.\nRelancer l'application une fois cela fait. \n A tout à l'heure :)"
+        android:text="Merci de choisir votre ordinateur :"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <LinearLayout
+        android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:id="@+id/textView" />
+        android:id="@+id/choices">
+
+    </LinearLayout>
+
+    <Button
+        android:text="Button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/validate" />
+
 </LinearLayout>
