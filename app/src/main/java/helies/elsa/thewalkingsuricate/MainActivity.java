@@ -1,243 +1,105 @@
 package helies.elsa.thewalkingsuricate;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothSocket;
-import android.content.Context;
-import android.content.DialogInterface;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
+import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.UUID;
+import java.util.ArrayList;
+import java.util.Set;
 
-public class MainActivity extends Activity implements SensorEventListener {
-    // Accéléromètre
-    private SensorManager senSensorManager;
-    private Sensor senAccelerometer;
-    private float last_y, last_z;
 
+// Gestion du choix de l'ordinateur pour le Bluetooth
+public class MainActivity extends Activity{
     // Bluetooth
     private BluetoothAdapter btAdapter = null;
-    private BluetoothSocket btSocket = null;
-    private OutputStream outStream = null;
-
-    private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-    //private static String address = "74:2F:68:B2:27:75"; // Elsa
-    //private static String address = "00:1A:7D:DA:71:13"; // Léon
-    private static String address = "A0:88:69:6C:C6:C1"; // Adrien
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        senSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        senAccelerometer = senSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        senSensorManager.registerListener(this, senAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
-
         btAdapter = BluetoothAdapter.getDefaultAdapter();
         CheckBTState();
-        startGame();
+        setContentView(R.layout.choixbluetooth);
+        setChoices();
     }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-    }
+    private void setChoices() {
+        Button validate = (Button) findViewById(R.id.validate);
+        final RadioGroup group = (RadioGroup) findViewById(R.id.choices);
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        senSensorManager.unregisterListener(this);
-        //sendMessage("PAUSE\n");
-        if (outStream != null) {
-            try {
-                outStream.flush();
-            } catch (IOException e) {
-                AlertBox("Fatal Error", "In onPause() and failed to flush output stream: " + e.getMessage() + ".");
-            }
-        }
+        Set<BluetoothDevice> devices = btAdapter.getBondedDevices();
+        final ArrayList<String> adresses = new ArrayList<String>();
 
-        try     {
-            btSocket.close();
-        } catch (IOException e2) {
-            AlertBox("Fatal Error", "In onPause() and failed to close socket." + e2.getMessage() + ".");
+        int i = 0;
+        for(BluetoothDevice elem : devices) {
+            RadioButton rd = new RadioButton(this);
+            adresses.add(i,elem.getAddress());
+            rd.setId(i++);
+            rd.setText(elem.getName());
+            group.addView(rd);
         }
 
 
-
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        senSensorManager.registerListener(this, senAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
-
-        /*
-        Pour récupérer le device sans passer par l'adresse.
-        */
-        BluetoothDevice device = btAdapter.getRemoteDevice(address);
-
-        try {
-            btSocket = device.createRfcommSocketToServiceRecord(MY_UUID);
-        } catch (IOException e) {
-            AlertBox("Fatal Error", "In onResume() and socket create failed: " + e.getMessage() + ".");
-        }
-
-        btAdapter.cancelDiscovery();
-
-        try {
-            btSocket.connect();
-        } catch (IOException e) {
-            try {
-                btSocket.close();
-            } catch (IOException e2) {
-                AlertBox("Fatal Error", "In onResume() and unable to close socket during connection failure" + e2.getMessage() + ".");
-            }
-        }
-
-        Toast.makeText(MainActivity.this, "START", Toast.LENGTH_SHORT).show();
-
-        sendMessage("START\n");
-    }
-
-    @Override
-    protected void onStop() {
-
-        Toast.makeText(MainActivity.this, "STOP" , Toast.LENGTH_SHORT).show();
-        sendMessage("STOP\n");
-        senSensorManager.unregisterListener(this);
-        if (outStream != null) {
-            try {
-                outStream.flush();
-            } catch (IOException e) {
-                AlertBox("Fatal Error", "In onPause() and failed to flush output stream: " + e.getMessage() + ".");
-            }
-        }
-
-        try     {
-            btSocket.close();
-        } catch (IOException e2) {
-            AlertBox("Fatal Error", "In onPause() and failed to close socket." + e2.getMessage() + ".");
-        }
-
-        super.onStop();
-    }
-
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-
-        float y = event.values[1];
-        float z = event.values[2];
-
-        if (Math.abs(last_z - z) > 8 && Math.abs(last_y - y) > 8){
-            // Détection d'une coupe
-            sendMessage("COUPE\n");
-            Toast.makeText(MainActivity.this, "Coupe", Toast.LENGTH_SHORT).show();
-        }
-
-        last_y = y;
-        last_z = z;
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
-    }
-
-    private void startGame() {
-        setContentView(R.layout.game);
-        addListener();
-    }
-
-    private void addListener(){
-        final Button arme1 = (Button) findViewById(R.id.arme1);
-        final Button arme2 = (Button) findViewById(R.id.arme2);
-        final Button trex = (Button) findViewById(R.id.trex);
-        final Button bombe = (Button) findViewById(R.id.bombe);
-
-        arme1.setOnClickListener(new View.OnClickListener() {
+        validate.setOnClickListener(new View.OnClickListener() {
+            @Override
             public void onClick(View v) {
-                // Perform action on click
-                Toast.makeText(MainActivity.this, "Arme1", Toast.LENGTH_SHORT).show();
-                arme1.setEnabled(false);
-                arme2.setEnabled(true);
-                sendMessage("ARME1\n");
-            }
-        });
+                Log.i("INFO", "Validate");
+                if (group.getCheckedRadioButtonId() == -1) {
+                    // no radio buttons are checked
+                    // TODO
+                } else {
+                    // one of the radio buttons is checked
+                    GameActivity.address = adresses.get(group.getCheckedRadioButtonId());
+                    Intent intent = new Intent(MainActivity.this, GameActivity.class);
+                    startActivity(intent);
+                }
 
-        arme2.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                // Perform action on click
-                Toast.makeText(MainActivity.this, "Arme2", Toast.LENGTH_SHORT).show();
-                arme2.setEnabled(false);
-                arme1.setEnabled(true);
-                sendMessage("ARME2\n");
-            }
-        });
-
-        trex.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                // Perform action on click
-                Toast.makeText(MainActivity.this, "T-rex", Toast.LENGTH_SHORT).show();
-                sendMessage("TREX\n");
-            }
-        });
-
-        bombe.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                // Perform action on click
-                Toast.makeText(MainActivity.this, "bombe", Toast.LENGTH_SHORT).show();
-                sendMessage("BOMBE\n");
             }
         });
     }
 
-    private void sendMessage(String message){
-        try {
-            outStream = btSocket.getOutputStream();
-        } catch (IOException e) {
-            AlertBox("Fatal Error", "In onResume() and output stream creation failed:" + e.getMessage() + ".");
-        }
-        byte[] msgBuffer = message.getBytes();
-        try {
-            outStream.write(msgBuffer);
-        } catch (IOException e) {
-            String msg = "In onResume() and an exception occurred during write: " + e.getMessage();
-            msg = msg +  ".\n\nCheck that the SPP UUID: " + MY_UUID.toString() + " exists on server.\n\n";
-            AlertBox("Fatal Error", msg);
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.about:
+                // Comportement du bouton "A Propos"
+                return true;
+            case R.id.help:
+                // Comportement du bouton "Aide"
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
         }
     }
 
+    /**
+     * Vérifie que le bluetooth est présent sur l'appareil et qu'il estr activé
+     */
     private void CheckBTState() {
-        // Check for Bluetooth support and then check to make sure it is turned on
-        // Emulator doesn't support Bluetooth and will return null
-        if(btAdapter==null) {
-            AlertBox("Fatal Error", "Bluetooth Not supported. Aborting.");
-        } else {
+        if(btAdapter!=null) {
             if (!btAdapter.isEnabled()) {
                 btAdapter.enable();
             }
         }
+        //else {
+            // Bluetooth non supporté
+            // TODO
+        //}
     }
 
-    public void AlertBox( String title, String message ){
-        new AlertDialog.Builder(this)
-                .setTitle( title )
-                .setMessage( message + " Press OK to exit." )
-                .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface arg0, int arg1) {
-                        finish();
-                    }
-                }).show();
-    }
 }
