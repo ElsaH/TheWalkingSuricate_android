@@ -5,6 +5,8 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.Html;
+import android.text.Spanned;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -13,6 +15,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Set;
@@ -30,6 +33,17 @@ public class MainActivity extends Activity{
         CheckBTState();
         setContentView(R.layout.choixbluetooth);
         setChoices();
+        setDesign();
+    }
+
+    private void setDesign() {
+        TextView myTextView = (TextView) findViewById(R.id.welcome);
+        Spanned spanned = Html.fromHtml("<p style=\"align:center;font-size:20px;\"><strong>Bienvenue sur le jeu The Walking Suricate. Vous n'êtes plus qu'à une étape de jouer.</strong> </p>" +
+                "<p style=\"align:center\">Pour pouvoir jouer, vous devez vous connecter avec votre ordinateur en Bluetooth.</p>" +
+                "<p style=\"align:center\">Si votre ordinateur n'apparait pas dans la liste ci-dessous, il vous faut donc apparailler votre téléphone avec votre ordinateur " +
+                "(pour cela aller dans les paramètres Bluetooth de vos appareils).</p>" +
+                "<p style=\"align:center\">Relancer ensuite l'application.</p>");
+        myTextView.setText(spanned);
     }
 
     private void setChoices() {
@@ -48,7 +62,7 @@ public class MainActivity extends Activity{
             group.addView(rd);
         }
 
-
+        validate.setText("Valider le choix");
         validate.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

@@ -1,21 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:orientation="vertical"
     android:layout_width="fill_parent"
-    android:layout_height="fill_parent">
+    android:layout_height="fill_parent"
+    android:foregroundGravity="center_vertical"
+    android:gravity="center_horizontal"
+    android:padding="20dp">
 
 
+    <TextView
+        android:text="Bienvenue sur le jeu The Walking Suricate. Vous n'êtes plus qu'à une étape de jouer. \nPour pouvoir jouer, vous devez vous connecter avec votre ordinateur en Bluetooth.\nSi votre ordinateur n'apparait pas dans la liste ci-dessous, il vous faut donc apparailler votre téléphone avec votre ordinateur (pour cela aller dans les paramètres Bluetooth de vos appareils).\nRelancer ensuite l'application."
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/welcome" />
 
     <TextView
         android:text="Merci de choisir votre ordinateur :"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical" />
 
     <LinearLayout
         android:orientation="vertical"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical">
 
         <RadioGroup
             android:layout_width="match_parent"
@@ -25,8 +36,11 @@
 
     <Button
         android:text="Button"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/validate" />
+        android:id="@+id/validate"
+        style="@android:style/Widget.DeviceDefault.Light.Button"
+        android:gravity="center_vertical"
+        android:layout_margin="10dp" />
 
 </LinearLayout>
