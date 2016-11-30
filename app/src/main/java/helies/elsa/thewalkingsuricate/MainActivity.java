@@ -2,57 +2,39 @@ package helies.elsa.thewalkingsuricate;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Notification;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.Intent;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
-import android.text.Layout;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.StringTokenizer;
 import java.util.UUID;
-
-import static java.lang.System.exit;
 
 public class MainActivity extends Activity implements SensorEventListener {
     // Accéléromètre
     private SensorManager senSensorManager;
     private Sensor senAccelerometer;
-    private float last_x, last_y, last_z;
-
+    private float last_y, last_z;
 
     // Bluetooth
-    private static final int REQUEST_ENABLE_BT = 1;
     private BluetoothAdapter btAdapter = null;
     private BluetoothSocket btSocket = null;
     private OutputStream outStream = null;
 
     private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-    //private static String address = "74:2F:68:B2:27:75";
-    private static String address = "00:1A:7D:DA:71:13";
-    //private static String address = "A0:88:69:6C:C6:C1";
+    //private static String address = "74:2F:68:B2:27:75"; // Elsa
+    //private static String address = "00:1A:7D:DA:71:13"; // Léon
+    private static String address = "A0:88:69:6C:C6:C1"; // Adrien
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,19 +46,19 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         btAdapter = BluetoothAdapter.getDefaultAdapter();
         CheckBTState();
-
+        startGame();
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        startGame();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         senSensorManager.unregisterListener(this);
+        //sendMessage("PAUSE\n");
         if (outStream != null) {
             try {
                 outStream.flush();
@@ -90,48 +72,9 @@ public class MainActivity extends Activity implements SensorEventListener {
         } catch (IOException e2) {
             AlertBox("Fatal Error", "In onPause() and failed to close socket." + e2.getMessage() + ".");
         }
-    }
-
-    private String chooseBluetoothDevice(Set<BluetoothDevice> set){
-
-        if(set.size() == 0) {
-            exit(0);
-        }
-
-        Button validate = (Button) findViewById(R.id.validate);
-        LinearLayout choix = (LinearLayout) findViewById(R.id.choices);
-        RadioGroup group ;
-        // https://www.mkyong.com/android/android-radio-buttons-example/
-
-        final String[] choices = new String[set.size()];
-        final String[] adresses = new String[set.size()];
-        RadioButton[] list = new RadioButton[set.size()];
-
-        final int[] choose = new int[1];
-        final BluetoothDevice[] choosen = new BluetoothDevice[1];
-
-        int i = 0;
-        for (Object elem : set) {
-            choices[i] = ((BluetoothDevice) elem).getName();
-            adresses[i] = ((BluetoothDevice) elem).getAddress();
 
 
-        }
 
-
-        validate.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                Toast.makeText(MainActivity.this, "You selected "+ adresses[choose[0]], Toast.LENGTH_SHORT).show();
-                Log.i("info", "Choix : " + choose[0] + " donc addresse : "+ adresses[choose[0]]);
-                //choosen[0] = btAdapter.getRemoteDevice(adresses[choose[0]]);
-
-            }
-        });
-
-        AlertDialog alert = popup.create();
-        alert.show();
-        setContentView(R.layout.positions);
-        return adresses[choose[0]];
     }
 
     @Override
@@ -139,13 +82,9 @@ public class MainActivity extends Activity implements SensorEventListener {
         super.onResume();
         senSensorManager.registerListener(this, senAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
 
-
         /*
         Pour récupérer le device sans passer par l'adresse.
         */
-        Set<BluetoothDevice> bondedDevices = btAdapter.getBondedDevices();
-        String address = chooseBluetoothDevice(bondedDevices);
-
         BluetoothDevice device = btAdapter.getRemoteDevice(address);
 
         try {
@@ -165,25 +104,49 @@ public class MainActivity extends Activity implements SensorEventListener {
                 AlertBox("Fatal Error", "In onResume() and unable to close socket during connection failure" + e2.getMessage() + ".");
             }
         }
+
+        Toast.makeText(MainActivity.this, "START", Toast.LENGTH_SHORT).show();
+
+        sendMessage("START\n");
+    }
+
+    @Override
+    protected void onStop() {
+
+        Toast.makeText(MainActivity.this, "STOP" , Toast.LENGTH_SHORT).show();
+        sendMessage("STOP\n");
+        senSensorManager.unregisterListener(this);
+        if (outStream != null) {
+            try {
+                outStream.flush();
+            } catch (IOException e) {
+                AlertBox("Fatal Error", "In onPause() and failed to flush output stream: " + e.getMessage() + ".");
+            }
+        }
+
+        try     {
+            btSocket.close();
+        } catch (IOException e2) {
+            AlertBox("Fatal Error", "In onPause() and failed to close socket." + e2.getMessage() + ".");
+        }
+
+        super.onStop();
     }
 
     @Override
     public void onSensorChanged(SensorEvent event) {
 
-        float x = event.values[0];
         float y = event.values[1];
         float z = event.values[2];
 
-        if (Math.abs(last_z - z) > 10 && Math.abs(last_y - y) > 10){
+        if (Math.abs(last_z - z) > 8 && Math.abs(last_y - y) > 8){
             // Détection d'une coupe
             sendMessage("COUPE\n");
             Toast.makeText(MainActivity.this, "Coupe", Toast.LENGTH_SHORT).show();
         }
 
-        last_x = x;
         last_y = y;
         last_z = z;
-
     }
 
     @Override
@@ -262,9 +225,7 @@ public class MainActivity extends Activity implements SensorEventListener {
             AlertBox("Fatal Error", "Bluetooth Not supported. Aborting.");
         } else {
             if (!btAdapter.isEnabled()) {
-                //Prompt user to turn on Bluetooth
-                Intent enableBtIntent = new Intent(btAdapter.ACTION_REQUEST_ENABLE);
-                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+                btAdapter.enable();
             }
         }
     }
