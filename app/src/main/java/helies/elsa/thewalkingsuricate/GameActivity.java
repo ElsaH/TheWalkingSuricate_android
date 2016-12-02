@@ -11,14 +11,24 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.media.AudioFormat;
+import android.media.AudioManager;
+import android.media.AudioRecord;
+import android.media.AudioTrack;
+import android.media.MediaRecorder;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.UUID;
+
+import static android.R.id.input;
 
 public class GameActivity extends Activity implements SensorEventListener {
 
@@ -33,9 +43,11 @@ public class GameActivity extends Activity implements SensorEventListener {
     private OutputStream outStream = null;
 
     private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-    //private static String address = "74:2F:68:B2:27:75"; // Elsa
-    //private static String address = "00:1A:7D:DA:71:13"; // Léon
-    public static String address = "A0:88:69:6C:C6:C1"; // Adrien
+    public static String address ;
+
+    private AudioRecord audioRecord;
+    private final int sample = AudioTrack.getNativeOutputSampleRate(AudioManager.STREAM_MUSIC);
+    private final int size = AudioRecord.getMinBufferSize(sample, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,13 +57,14 @@ public class GameActivity extends Activity implements SensorEventListener {
         senSensorManager.registerListener(this, senAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         btAdapter = BluetoothAdapter.getDefaultAdapter();
 
+
         startGame();
     }
 
     @Override
     protected void onPause() {
         senSensorManager.unregisterListener(this);
-        //sendMessage("PAUSE\n");
+        sendMessage("PAUSE\n");
         if (outStream != null) {
             try {
                 outStream.flush();
@@ -130,6 +143,14 @@ public class GameActivity extends Activity implements SensorEventListener {
         final Button trex = (Button) findViewById(R.id.trex);
         final Button bombe = (Button) findViewById(R.id.bombe);
 
+        final TextView waiting = (TextView) findViewById(R.id.waiting);
+        waiting.setText("");
+
+        audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, 44100, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, size);
+        if(audioRecord == null) {
+            Log.i("Fils de pute", "C'est nul");
+        }
+
         arme1.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 // Perform action on click
@@ -151,6 +172,22 @@ public class GameActivity extends Activity implements SensorEventListener {
         trex.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 // Perform action on click
+
+
+                audioRecord.startRecording();
+                boolean grognement = false;
+                waiting.setText("En attente de grognement !");
+
+                while(!grognement){
+                    short sData[] = new short[size];
+                    audioRecord.read(sData, 0, size);
+
+                    if(isGrognement(sData)) grognement = true;
+                }
+
+                waiting.setText("");
+                audioRecord.stop();
+                trex.setEnabled(false);
                 sendMessage("TREX\n");
             }
         });
@@ -158,9 +195,37 @@ public class GameActivity extends Activity implements SensorEventListener {
         bombe.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 // Perform action on click
+                bombe.setEnabled(false);
                 sendMessage("BOMBE\n");
             }
         });
+    }
+
+    private void showAlertBox(){
+
+    }
+
+    private boolean isGrognement(short[] sData) {
+        for(int i=0; i< sData.length; i++) {
+            if(sData[i] > 12000) {
+                Log.i("INFO", String.valueOf(sData[i]));
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private byte[] short2byte(short[] sData) {
+        int shortArrsize = sData.length;
+        byte[] bytes = new byte[shortArrsize * 2];
+        for (int i = 0; i < shortArrsize; i++) {
+            bytes[i * 2] = (byte) (sData[i] & 0x00FF);
+            bytes[(i * 2) + 1] = (byte) (sData[i] >> 8);
+            sData[i] = 0;
+        }
+        return bytes;
+
     }
 
     @Override
