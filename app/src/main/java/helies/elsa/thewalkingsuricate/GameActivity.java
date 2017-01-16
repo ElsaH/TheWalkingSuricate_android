@@ -136,6 +136,12 @@ public class GameActivity extends Activity implements SensorEventListener {
         addListener();
     }
 
+    @Override
+    protected void onDestroy() {
+        sendMessage("STOP\n");
+        super.onDestroy();
+    }
+
     private void addListener(){
         final Button arme1 = (Button) findViewById(R.id.arme1);
         final Button arme2 = (Button) findViewById(R.id.arme2);
@@ -147,7 +153,7 @@ public class GameActivity extends Activity implements SensorEventListener {
 
         audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, 44100, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, size);
         if(audioRecord == null) {
-            Log.i("Fils de pute", "C'est nul");
+            Log.i("ERROR", "Pas d'audio");
         }
 
         arme1.setOnClickListener(new View.OnClickListener() {
@@ -171,23 +177,18 @@ public class GameActivity extends Activity implements SensorEventListener {
         trex.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 // Perform action on click
-
-
                 audioRecord.startRecording();
                 boolean grognement = false;
-                waiting.setText("En attente de grognement !");
 
                 while(!grognement){
                     short sData[] = new short[size];
                     audioRecord.read(sData, 0, size);
-
                     if(isGrognement(sData)) grognement = true;
                 }
 
                 Vibrator vibrate = (Vibrator) getApplicationContext().getSystemService(Context.VIBRATOR_SERVICE);
                 vibrate.vibrate(500);
 
-                waiting.setText("");
                 audioRecord.stop();
                 trex.setEnabled(false);
                 sendMessage("TREX\n");
@@ -196,7 +197,15 @@ public class GameActivity extends Activity implements SensorEventListener {
 
         bombe.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                // Perform action on click
+                audioRecord.startRecording();
+                boolean clapement = false;
+
+                while(!clapement){
+                    short sData[] = new short[size];
+                    audioRecord.read(sData, 0, size);
+                    if(isClapement(sData)) clapement = true;
+                }
+                audioRecord.stop();
                 bombe.setEnabled(false);
                 sendMessage("BOMBE\n");
             }
@@ -207,10 +216,28 @@ public class GameActivity extends Activity implements SensorEventListener {
 
     }
 
-    private boolean isGrognement(short[] sData) {
+    private boolean isClapement(short[] sData) {
         for(int i=0; i< sData.length; i++) {
             if(sData[i] > 12000) {
                 Log.i("INFO", String.valueOf(sData[i]));
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isGrognement(short[] sData){
+        int j = 0;
+        for(int i=0; i< sData.length; i++) {
+            if(sData[i] > 8000) {
+                Log.i("INFO", String.valueOf(sData[i]));
+                j++;
+            } else {
+                j = 0;
+            }
+
+            if(j > 10){
                 return true;
             }
         }
