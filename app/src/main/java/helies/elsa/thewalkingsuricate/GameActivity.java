@@ -22,6 +22,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.os.Vibrator;
+
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -86,9 +88,6 @@ public class GameActivity extends Activity implements SensorEventListener {
         super.onResume();
         senSensorManager.registerListener(this, senAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
 
-        /*
-        Pour récupérer le device sans passer par l'adresse.
-        */
         BluetoothDevice device = btAdapter.getRemoteDevice(address);
 
         try {
@@ -184,6 +183,9 @@ public class GameActivity extends Activity implements SensorEventListener {
 
                     if(isGrognement(sData)) grognement = true;
                 }
+
+                Vibrator vibrate = (Vibrator) getApplicationContext().getSystemService(Context.VIBRATOR_SERVICE);
+                vibrate.vibrate(500);
 
                 waiting.setText("");
                 audioRecord.stop();
